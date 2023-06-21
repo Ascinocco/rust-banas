@@ -6,9 +6,114 @@ use std::io::{Write, BufReader, BufRead, ErrorKind};
 use std::fs::File;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::thread;
+use std::time::Duration;
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 
 mod restaurant;
 use crate::restaurant::order_food;
+
+fn bank_concurrency_example() {
+  pub struct Bank {
+    balance: f32
+  }
+
+  fn withdraw(b: &Arc<Mutex<Bank>>, amt: f32) {
+    let mut bank_ref = b.lock().unwrap();
+    if bank_ref.balance < 5.00 {
+      println!("Current Balance: {}. Not enough dough", bank_ref.balance)
+    } else {
+      bank_ref.balance -= amt;
+      println!("Customer withdrew {}. Current balance = {}", amt, bank_ref.balance)
+    }
+  }
+
+  fn customer(b: Arc<Mutex<Bank>>) {
+    withdraw(&b, 5.00);
+  }
+
+  let bank = Arc::new(Mutex::new(Bank {
+    balance: 20.00,
+  }));
+
+  let handles = (0..10).map(|_| {
+    let bank_ref = bank.clone();
+    return thread::spawn(|| {
+      customer(bank_ref);
+    });
+  });
+
+  for handle in handles {
+    handle.join().unwrap();
+  }
+
+  println!("Total {}", bank.lock().unwrap().balance)
+
+}
+
+fn concurrency_example() {
+  let thread1 = thread::spawn(|| {
+    for i  in 1..25 {
+      println!("Spawned thread : {}", i);
+      // now other threads can execute
+      thread::sleep(Duration::from_millis(1));
+    }
+  });
+
+  for i in 1..20 {
+    println!("Main thread : {}", i);
+    // now other thread can execute... back and forth...
+    thread::sleep(Duration::from_millis(1));
+  }
+
+  thread1.join();
+}
+
+fn main() {
+  // concurrency_example();
+  bank_concurrency_example();
+}
+
+fn binary_tree_example() {
+  struct TreeNode<T> {
+    pub left: Option<Box<TreeNode<T>>>,
+    pub right: Option<Box<TreeNode<T>>>,
+    pub key: T,
+  }
+
+  impl<T> TreeNode<T> {
+    pub fn new(key: T) -> Self {
+      TreeNode{ left: None, right: None, key }
+    }
+
+    pub fn left(mut self, node: TreeNode<T>) -> Self {
+      self.left = Some(Box::new(node));
+      return self;
+    }
+
+    pub fn right(mut self, node: TreeNode<T>) -> Self {
+      self.right = Some(Box::new(node));
+      return self;
+    }
+  }
+
+  let node = TreeNode::new(1)
+    .left(TreeNode::new(2))
+    .right(TreeNode::new(3));
+
+}
+
+fn pointers_examples() {
+  let b_int1 = Box::new(10);
+  println!("b_int = {}", b_int1);
+}
+
+fn main6() {
+  pointers_examples();
+  binary_tree_example();
+}
 
 fn iterators_example() {
   let mut arr_it = [1,2,3,4];
@@ -51,7 +156,7 @@ fn closure_p2() {
 
 }
 
-fn main() {
+fn main5() {
   iterators_example();
   closure_examples();
   closure_p2();
